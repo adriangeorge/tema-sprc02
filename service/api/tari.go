@@ -89,7 +89,7 @@ func UpdateCountry(ctx echo.Context) error {
 
 	res, err := db.TaraCollection.UpdateOne(db.Context, filter, update)
 	if err != nil {
-		return ctx.JSON(400, "Bad update")
+		return ctx.JSON(409, "Bad update")
 	}
 	if res.ModifiedCount == 0 {
 		fmt.Println(err)

@@ -53,65 +53,251 @@ func CreateTemp(ctx echo.Context) error {
 
 // GET /api/temperatures?lat=Double&lon=Double&from=Date&until=Date
 func GetTempsParams(ctx echo.Context) error {
-
 	lat := ctx.FormValue("lat")
 	lon := ctx.FormValue("lon")
 	from := ctx.FormValue("from")
 	until := ctx.FormValue("until")
 	fmt.Println(lat, lon, from, until)
 
-	var operations []bson.M
-	
-	res, err := db.TaraCollection.Find(db.Context, bson.D{{}})
+	var operations []bson.D
+
+	// Join
+	city_lookup := bson.D{{
+		Key: "$lookup",
+		Value: bson.D{
+			{Key: "from", Value: "Orase"},
+			{Key: "localField", Value: "id_oras"},
+			{Key: "foreignField", Value: "id"},
+			{Key: "as", Value: "o"},
+		},
+	}}
+	operations = append(operations, city_lookup)
+
+	// Location matchers
+	if len(lat) > 0 {
+		float_val, _ := strconv.ParseFloat(lat, 64)
+		fmt.Println(float_val)
+		latitude_match := bson.D{{
+			Key:   "$match",
+			Value: bson.D{{Key: "o.latitudine", Value: float_val}},
+		}}
+		operations = append(operations, latitude_match)
+	}
+
+	if len(lon) > 0 {
+		float_val, _ := strconv.ParseFloat(lon, 64)
+		longitudine_match := bson.D{{
+			Key:   "$match",
+			Value: bson.D{{Key: "o.longitudine", Value: float_val}},
+		}}
+		operations = append(operations, longitudine_match)
+	}
+
+	// Time matchers
+	if len(from) > 0 {
+		date, _ := time.Parse("2006-01-02", from)
+		fmt.Println(date)
+		from_match := bson.D{{
+			Key: "$match",
+			Value: bson.D{{Key: "timestamp", Value: bson.D{
+				{Key: "$gte", Value: date},
+			}}},
+		}}
+		operations = append(operations, from_match)
+	}
+
+	if len(until) > 0 {
+		date, _ := time.Parse("2006-01-02", until)
+		fmt.Println(date)
+		from_match := bson.D{{
+			Key: "$match",
+			Value: bson.D{{Key: "timestamp", Value: bson.D{
+				{Key: "$lte", Value: date},
+			}}},
+		}}
+		operations = append(operations, from_match)
+	}
+
+	res, err := db.TemperaturiCollection.Aggregate(db.Context, operations)
 	if err != nil {
 		fmt.Println(err)
 		return ctx.JSON(500, "Something went wrong")
 	}
 
-	var tara_list []models.Tara
-	err = res.All(db.Context, &tara_list)
+	var temperaturi_list []models.Temperaturi
+	fmt.Println(temperaturi_list)
+
+	var return_temp_array []models.Temperaturi_Response = make([]models.Temperaturi_Response, 0)
+
+	err = res.All(db.Context, &temperaturi_list)
+	for i, _ := range temperaturi_list {
+		var new_temp models.Temperaturi_Response
+		new_temp.Id = temperaturi_list[i].Id
+		new_temp.Timestamp = temperaturi_list[i].Timestamp
+		new_temp.Valoare = temperaturi_list[i].Valoare
+
+		return_temp_array = append(return_temp_array, new_temp)
+	}
+
 	if err != nil {
 		fmt.Println(err)
 		return ctx.JSON(500, "Something went wrong")
 	}
-
-	return ctx.JSON(200, tara_list)
+	fmt.Println(return_temp_array)
+	return ctx.JSON(200, return_temp_array)
 }
 
 // GET /api/temperatures/cities/:id_oras?from=Date&until=Date
 func GetTempsParamsIdCity(ctx echo.Context) error {
-	res, err := db.TaraCollection.Find(db.Context, bson.D{{}})
+	id, err := strconv.ParseInt(ctx.Param("id_oras"), 10, 32)
+
+	from := ctx.FormValue("from")
+	until := ctx.FormValue("until")
+	fmt.Println(from, until)
+
+	var operations []bson.D
+
+	// Join
+	city_lookup := bson.D{{
+		Key: "$lookup",
+		Value: bson.D{
+			{Key: "from", Value: "Orase"},
+			{Key: "localField", Value: "id_oras"},
+			{Key: "foreignField", Value: "id"},
+			{Key: "as", Value: "o"},
+		},
+	}}
+	operations = append(operations, city_lookup)
+
+	city_match := bson.D{{
+		Key:   "$match",
+		Value: bson.D{{Key: "o.id", Value: id}},
+	}}
+	operations = append(operations, city_match)
+
+	// Time matchers
+	if len(from) > 0 {
+		date, _ := time.Parse("2006-01-02", from)
+		fmt.Println(date)
+		from_match := bson.D{{
+			Key: "$match",
+			Value: bson.D{{Key: "timestamp", Value: bson.D{
+				{Key: "$gte", Value: date},
+			}}},
+		}}
+		operations = append(operations, from_match)
+	}
+
+	if len(until) > 0 {
+		date, _ := time.Parse("2006-01-02", until)
+		fmt.Println(date)
+		from_match := bson.D{{
+			Key: "$match",
+			Value: bson.D{{Key: "timestamp", Value: bson.D{
+				{Key: "$lte", Value: date},
+			}}},
+		}}
+		operations = append(operations, from_match)
+	}
+
+	res, err := db.TemperaturiCollection.Aggregate(db.Context, operations)
 	if err != nil {
 		fmt.Println(err)
 		return ctx.JSON(500, "Something went wrong")
 	}
 
-	var tara_list []models.Tara
-	err = res.All(db.Context, &tara_list)
+	var return_temp_array []models.Temperaturi_Response = make([]models.Temperaturi_Response, 0)
+	err = res.All(db.Context, &return_temp_array)
 	if err != nil {
 		fmt.Println(err)
 		return ctx.JSON(500, "Something went wrong")
 	}
-
-	return ctx.JSON(200, tara_list)
+	fmt.Println(return_temp_array)
+	return ctx.JSON(200, return_temp_array)
 }
 
 // GET /api/temperatures/countries/:id_tara?from=Date&until=Date
 func GetTempsParamsIdCountry(ctx echo.Context) error {
-	res, err := db.TaraCollection.Find(db.Context, bson.D{{}})
+	id, err := strconv.ParseInt(ctx.Param("id_tara"), 10, 32)
+
+	from := ctx.FormValue("from")
+	until := ctx.FormValue("until")
+	fmt.Println(from, until)
+
+	var operations []bson.D
+
+	// Join
+	city_lookup := bson.D{{
+		Key: "$lookup",
+		Value: bson.D{
+			{Key: "from", Value: "Orase"},
+			{Key: "localField", Value: "id_oras"},
+			{Key: "foreignField", Value: "id"},
+			{Key: "as", Value: "o"},
+		},
+	}}
+	operations = append(operations, city_lookup)
+
+	country_lookup := bson.D{{
+		Key: "$lookup",
+		Value: bson.D{
+			{Key: "from", Value: "Tari"},
+			{Key: "localField", Value: "o.id_tara"},
+			{Key: "foreignField", Value: "id"},
+			{Key: "as", Value: "t"},
+		},
+	}}
+	country_match := bson.D{{
+		Key:   "$match",
+		Value: bson.D{{Key: "t.id", Value: id}},
+	}}
+	operations = append(operations, country_lookup)
+	operations = append(operations, country_match)
+
+	// Time matchers
+	if len(from) > 0 {
+		date, _ := time.Parse("2006-01-02", from)
+		fmt.Println(date)
+		from_match := bson.D{{
+			Key: "$match",
+			Value: bson.D{{Key: "timestamp", Value: bson.D{
+				{Key: "$gte", Value: date},
+			}}},
+		}}
+		operations = append(operations, from_match)
+	}
+
+	if len(until) > 0 {
+		date, _ := time.Parse("2006-01-02", until)
+		fmt.Println(date)
+		from_match := bson.D{{
+			Key: "$match",
+			Value: bson.D{{Key: "timestamp", Value: bson.D{
+				{Key: "$lte", Value: date},
+			}}},
+		}}
+		operations = append(operations, from_match)
+	}
+
+	res, err := db.TemperaturiCollection.Aggregate(db.Context, operations)
 	if err != nil {
 		fmt.Println(err)
 		return ctx.JSON(500, "Something went wrong")
 	}
 
-	var tara_list []models.Tara
-	err = res.All(db.Context, &tara_list)
+	var temperaturi_list []models.Temperaturi
+	fmt.Println(temperaturi_list)
+
+	var return_temp_array []models.Temperaturi_Response = make([]models.Temperaturi_Response, 0)
+
+	err = res.All(db.Context, &return_temp_array)
+
 	if err != nil {
 		fmt.Println(err)
 		return ctx.JSON(500, "Something went wrong")
 	}
-
-	return ctx.JSON(200, tara_list)
+	fmt.Println(return_temp_array)
+	return ctx.JSON(200, return_temp_array)
 }
 
 // PUT /api/countries/:id
@@ -143,7 +329,7 @@ func UpdateTemp(ctx echo.Context) error {
 
 	res, err := db.TemperaturiCollection.UpdateOne(db.Context, filter, update)
 	if err != nil {
-		return ctx.JSON(400, "Bad update")
+		return ctx.JSON(409, "Bad update")
 	}
 	if res.ModifiedCount == 0 {
 		fmt.Println(err)

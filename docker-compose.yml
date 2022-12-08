@@ -27,12 +27,15 @@ services:
       ME_CONFIG_MONGODB_ADMINPASSWORD: example
       ME_CONFIG_MONGODB_URL: mongodb://root:example@database:27017/
 
-  # backend:
-  #   build: ./service
-  #   networks:
-  #     - network_db
-  #   ports:
-  #     - 3000:3000
+  backend:
+    build: ./service
+    networks:
+      - network_db
+    ports:
+      - 6000:6000
+    environment:
+      - MONGODB_CONNSTRING_ENV=mongodb://root:example@database:27017/
+      - MONGODB_DBNAME_ENV=tema_sprc_02
 
 volumes:
   dbdata:

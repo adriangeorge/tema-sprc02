@@ -24,16 +24,18 @@ func main() {
 	e.GET("/api/cities", api.GetCities)
 	e.GET("/api/cities/country/:id_Tara", api.GetCitiesByCountry)
 	e.GET("/api/temperatures", api.GetTempsParams)
-	e.GET("/api/temperatures/:id_oras", api.GetTempsParamsIdCity)
-	e.GET("/api/temperatures/:id_tara", api.GetTempsParamsIdCountry)
+	e.GET("/api/temperatures/cities/:id_oras", api.GetTempsParamsIdCity)
+	e.GET("/api/temperatures/countries/:id_tara", api.GetTempsParamsIdCountry)
 
 	// List PUT routes\
 	e.PUT("/api/countries/:id", api.UpdateCountry)
 	e.PUT("/api/cities/:id", api.UpdateCity)
+	e.PUT("/api/temperatures/:id", api.UpdateTemp)
 
 	// List DELETE routes
 	e.DELETE("/api/countries/:id", api.DeleteCountry)
 	e.DELETE("/api/cities/:id", api.DeleteCity)
+	e.DELETE("/api/temperatures/:id", api.DeleteTemp)
 
 	e.Logger.Fatal(e.Start(":6000"))
 }

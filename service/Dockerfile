@@ -1,15 +1,19 @@
-FROM golang:1.16-alpine
+FROM golang:latest
 
-WORKDIR /app
+ADD . /usr/local/go/src/service
+WORKDIR /usr/local/go/src/service
+# COPY go.mod ./
+# COPY go.sum ./
+# COPY api ./
+# COPY database ./
+# COPY models ./
 
-COPY go.mod ./
-COPY go.sum ./
 RUN go mod download
 
 COPY *.go ./
 
-RUN go build -o /service
+RUN go build -o ./service
 
-EXPOSE 3000
+EXPOSE 6000
 
-CMD [ "/service" ]
+CMD [ "./service" ]
